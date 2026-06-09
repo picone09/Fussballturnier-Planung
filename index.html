@@ -437,6 +437,8 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
   </div>
 </div>
 
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <script>
 /* ===================== DATEN ===================== */
 const CATEGORIES = [
@@ -458,6 +460,69 @@ let state = {
 };
 let pendingImport = null; // {headers, rows}
 let uid = 1; const nid = ()=> 'x'+(uid++)+Date.now().toString(36).slice(-3);
+
+/* ===================== FIREBASE SYNC ===================== */
+firebase.initializeApp({
+  apiKey: "AIzaSyDWxprh5LSAdlLBisJrlFZbStYM70qCR6E",
+  authDomain: "rebstein-turnier.firebaseapp.com",
+  databaseURL: "https://rebstein-turnier-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "rebstein-turnier",
+  storageBucket: "rebstein-turnier.firebasestorage.app",
+  messagingSenderId: "587163325272",
+  appId: "1:587163325272:web:557d44ccf81c842bfd8b2d"
+});
+const dbRef = firebase.database().ref('tournament');
+let lastSyncedJSON = null;
+let syncTimer = null;
+let fbReady = false;
+
+function syncToFirebase(delay) {
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(() => {
+    const data = { v: 1, extraCats, state };
+    lastSyncedJSON = JSON.stringify(data);
+    dbRef.set(data);
+  }, delay || 0);
+}
+
+dbRef.on('value', snap => {
+  const incoming = snap.val();
+
+  if (!fbReady) {
+    fbReady = true;
+    if (incoming && incoming.state) {
+      state = incoming.state;
+      extraCats = incoming.extraCats || [];
+      if (!state.twShots) state.twShots = {};
+      if (!state.meta.rounds) state.meta.rounds = 1;
+      lastSyncedJSON = JSON.stringify(incoming);
+    }
+    renderAll();
+    return;
+  }
+
+  if (!incoming || !incoming.state) return;
+  const incomingJSON = JSON.stringify(incoming);
+  if (incomingJSON === lastSyncedJSON) return;
+
+  function applyRemote() {
+    state = incoming.state;
+    extraCats = incoming.extraCats || [];
+    if (!state.twShots) state.twShots = {};
+    if (!state.meta.rounds) state.meta.rounds = 1;
+    lastSyncedJSON = incomingJSON;
+    renderAll();
+    toast('Synchronisiert');
+  }
+
+  const active = document.activeElement;
+  if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) {
+    const onBlur = () => { document.removeEventListener('blur', onBlur, true); applyRemote(); };
+    document.addEventListener('blur', onBlur, true);
+  } else {
+    applyRemote();
+  }
+});
 
 /* ===================== HELPER ===================== */
 const $ = s=>document.querySelector(s);
@@ -521,14 +586,14 @@ function addManual(){
   const cat = $('#m-cat').value;
   state.players.push({id:nid(), name, cat});
   $('#m-name').value=''; $('#m-name').focus();
-  renderPlayers(); toast('Spieler hinzugefügt');
+  renderPlayers(); toast('Spieler hinzugefügt'); syncToFirebase();
 }
 function clearPlayers(){
   if(!state.players.length) return;
-  if(confirm('Wirklich alle '+state.players.length+' Spieler löschen?')){ state.players=[]; state.teams=[]; state.schedule=[]; state.twShots={}; renderPlayers(); renderTeams(); renderSchedule(); }
+  if(confirm('Wirklich alle '+state.players.length+' Spieler löschen?')){ state.players=[]; state.teams=[]; state.schedule=[]; state.twShots={}; renderPlayers(); renderTeams(); renderSchedule(); syncToFirebase(); }
 }
-function delPlayer(id){ state.players=state.players.filter(p=>p.id!==id); delete state.twShots[id]; renderPlayers(); }
-function changePlayerCat(id,val){ const p=playerById(id); if(p) p.cat=val; renderPlayers(); }
+function delPlayer(id){ state.players=state.players.filter(p=>p.id!==id); delete state.twShots[id]; renderPlayers(); syncToFirebase(); }
+function changePlayerCat(id,val){ const p=playerById(id); if(p) p.cat=val; renderPlayers(); syncToFirebase(); }
 
 /* ===================== SPIELER: RENDER ===================== */
 function renderPlayers(){
@@ -681,7 +746,7 @@ function confirmImport(){
   });
   pendingImport=null; $('#map-area').innerHTML='';
   renderPlayers();
-  toast(added+' Spieler importiert');
+  toast(added+' Spieler importiert'); syncToFirebase();
 }
 function exportPlayersCsv(){
   if(!state.players.length){ toast('Keine Spieler'); return; }
@@ -743,6 +808,7 @@ function buildTeams(reshuffle){
   renderTeams();
   showTab('teams');
   toast('Teams gebildet · '+T+' Mannschaften');
+  syncToFirebase();
 }
 
 function captainName(team){ const c=playerById(team.captainId); return c?c.name:'—'; }
@@ -785,8 +851,8 @@ function renderTeams(){
   h+='</div>';
   out.innerHTML=h;
 }
-function renameTeam(id,val){ const t=teamById(id); if(t) t.name=val.trim()||t.name; }
-function setCaptain(teamId,playerId){ const t=teamById(teamId); if(t){ t.captainId=playerId; renderTeams(); } }
+function renameTeam(id,val){ const t=teamById(id); if(t){ t.name=val.trim()||t.name; syncToFirebase(); } }
+function setCaptain(teamId,playerId){ const t=teamById(teamId); if(t){ t.captainId=playerId; renderTeams(); syncToFirebase(); } }
 function movePlayer(playerId, fromId, toId){
   if(!toId) { renderTeams(); return; }
   const from=teamById(fromId), to=teamById(toId);
@@ -794,7 +860,7 @@ function movePlayer(playerId, fromId, toId){
   from.playerIds = from.playerIds.filter(x=>x!==playerId);
   to.playerIds.push(playerId);
   if(from.captainId===playerId){ from.captainId = from.playerIds[0]||null; }
-  renderTeams();
+  renderTeams(); syncToFirebase();
 }
 
 /* ===================== SPIELPLAN ===================== */
@@ -829,6 +895,7 @@ function genSchedule(){
   renderSchedule();
   showTab('schedule');
   toast(sched.length+' Spiele · '+slotIndex+' Durchgänge'+(rounds>1?' · '+rounds+' Runden':''));
+  syncToFirebase();
 }
 function slotTime(si){
   if(!state.meta.useTime) return null;
@@ -842,7 +909,7 @@ function setScore(idx,which,val){
   g[which]= val===''?'':Math.max(0,parseInt(val)||0);
   g.played = (g.hg!=='' && g.ag!=='');
   renderScheduleMeta();
-  // live: nur Tabelle & Status, nicht alles neu rendern (Fokus behalten)
+  syncToFirebase(600); // debounced: Fokus bleibt beim Tippen erhalten
 }
 function renderScheduleMeta(){
   const played = state.schedule.filter(g=>g.played).length;
@@ -950,7 +1017,7 @@ function saveSettings(){
   state.meta.start=$('#s-start').value||'09:00';
   state.meta.dur=+$('#s-dur').value||12;
   state.meta.brk=+$('#s-break').value||0;
-  closeSettings(); renderSchedule(); toast('Einstellungen gespeichert');
+  closeSettings(); renderSchedule(); toast('Einstellungen gespeichert'); syncToFirebase();
 }
 
 /* ===================== SPEICHERN / LADEN ===================== */
@@ -973,7 +1040,7 @@ $('#json-file').addEventListener('change',ev=>{
     try{
       const obj=JSON.parse(e.target.result);
       if(obj.state){ state=obj.state; extraCats=obj.extraCats||[]; if(!state.twShots) state.twShots={}; if(!state.meta.rounds) state.meta.rounds=1; }
-      renderAll(); toast('Turnier geladen');
+      renderAll(); toast('Turnier geladen'); syncToFirebase();
     }catch(err){ toast('Datei konnte nicht gelesen werden'); }
   };
   r.readAsText(f); ev.target.value='';
@@ -1033,7 +1100,7 @@ function loadDemo(){
   dist.forEach(([cat,n])=>{ for(let k=0;k<n;k++){ pl.push({id:nid(), name:first[fi%first.length]+' '+last[li%last.length], cat}); fi++; li+=3; } });
   state={ meta:{name:'Rebstein Cup',date:'',fields:3,rounds:1,useTime:true,start:'09:00',dur:12,brk:3}, players:pl, teams:[], schedule:[], twShots:{} };
   $('#numTeams').value=10;
-  renderAll(); showTab('players'); toast('Beispieldaten geladen ('+pl.length+' Spieler)');
+  renderAll(); showTab('players'); toast('Beispieldaten geladen ('+pl.length+' Spieler)'); syncToFirebase();
 }
 
 /* ===================== TORWAND ===================== */
@@ -1128,14 +1195,14 @@ function twRenderModal(){
 function twShoot(n){ if(twModalShots.length>=TW_SHOTS) return; twModalShots.push(n); twRenderModal(); }
 function twMiss(){ if(twModalShots.length>=TW_SHOTS) return; twModalShots.push(0); twRenderModal(); }
 function twUndo(){ if(!twModalShots.length) return; twModalShots.pop(); twRenderModal(); }
-function twSave(){ if(!twModalPid||twModalShots.length<TW_SHOTS) return; state.twShots[twModalPid]=twModalShots.slice(); twClose(); twRender(); toast('Gespeichert'); }
-function twResetAll(){ if(!Object.keys(state.twShots).length) return; if(confirm('Alle Torwand-Ergebnisse löschen?')){ state.twShots={}; twRender(); } }
+function twSave(){ if(!twModalPid||twModalShots.length<TW_SHOTS) return; state.twShots[twModalPid]=twModalShots.slice(); twClose(); twRender(); toast('Gespeichert'); syncToFirebase(); }
+function twResetAll(){ if(!Object.keys(state.twShots).length) return; if(confirm('Alle Torwand-Ergebnisse löschen?')){ state.twShots={}; twRender(); syncToFirebase(); } }
 $('#tw-modal').addEventListener('click', e=>{ if(e.target===$('#tw-modal')) twClose(); });
 
 /* ===================== INIT ===================== */
 function renderAll(){ renderPlayers(); renderTeams(); renderSchedule(); renderStandings(); twRender(); refreshBadges(); updateAdvice(); }
 fillCatSelect($('#m-cat'),"1. Mannschaft");
-renderAll();
+// Initiales Render erfolgt via Firebase-Listener (dbRef.on 'value') sobald Daten geladen sind
 </script>
 </body>
 </html>
