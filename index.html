@@ -674,7 +674,8 @@ function looksHeader(rows){
 function guessCol(rows, hasHeader, kind){
   const header = hasHeader ? rows[0].map(c=>c.toLowerCase()) : null;
   if(header){
-    if(kind==='name'){ const i=header.findIndex(c=>/name|spieler/.test(c)); if(i>=0) return i; }
+    if(kind==='vorname'){ const i=header.findIndex(c=>/vorname|vname|first/.test(c)); if(i>=0) return i; }
+    if(kind==='name'){ const i=header.findIndex(c=>/^name$|nachname|familienname|lastname/.test(c)); if(i>=0) return i; }
     if(kind==='cat'){ const i=header.findIndex(c=>/mannschaft|team|kategorie|gruppe|herkunft/.test(c)); if(i>=0) return i; }
   }
   // Inhalt prüfen: Spalte deren Werte oft auf Kategorien matchen -> cat
@@ -697,6 +698,7 @@ function renderMapping(){
   const rows = pendingImport.rows;
   const hasHeader = looksHeader(rows);
   const width = rows[0].length;
+  const colVorname = width>1 ? guessCol(rows,hasHeader,'vorname') : -1;
   const colName = guessCol(rows,hasHeader,'name');
   const colCat  = width>1 ? guessCol(rows,hasHeader,'cat') : -1;
   const opt = (sel)=> Array.from({length:width},(_,c)=>`<option value="${c}" ${c===sel?'selected':''}>Spalte ${c+1}${hasHeader?': '+esc(rows[0][c]||'—'):''}</option>`).join('');
@@ -707,7 +709,8 @@ function renderMapping(){
   $('#map-area').innerHTML = `
     <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--line)">
       <div class="row">
-        <div><label class="fld">Name-Spalte</label><select id="map-name">${opt(colName)}</select></div>
+        <div><label class="fld">Vorname-Spalte</label><select id="map-vorname"><option value="-1" ${colVorname<0?'selected':''}>— keine —</option>${opt(colVorname<0?-1:colVorname)}</select></div>
+        <div><label class="fld">Name-Spalte (Nachname)</label><select id="map-name">${opt(colName)}</select></div>
         <div><label class="fld">Mannschaft-Spalte</label><select id="map-cat"><option value="-1" ${colCat<0?'selected':''}>— keine / alle gleich —</option>${opt(colCat).replace('selected','')}</select></div>
       </div>
       <label style="display:flex;align-items:center;gap:8px;margin-top:12px;font-size:13px;font-weight:600;cursor:pointer">
@@ -719,19 +722,22 @@ function renderMapping(){
         <button class="ghost" onclick="cancelImport()">Abbrechen</button>
       </div>
     </div>`;
-  // colCat im select setzen
+  if(colVorname>=0){ const s=$('#map-vorname'); s.value=String(colVorname); }
   if(colCat>=0){ const s=$('#map-cat'); s.value=String(colCat); }
 }
 function cancelImport(){ pendingImport=null; $('#map-area').innerHTML=''; }
 function confirmImport(){
   const rows = pendingImport.rows;
   const hasHeader = $('#map-header').checked;
+  const cv = +$('#map-vorname').value;
   const ci = +$('#map-name').value;
   const cc = +$('#map-cat').value;
   const body = hasHeader ? rows.slice(1) : rows;
   let added=0;
   body.forEach(r=>{
-    const name = (r[ci]||'').trim();
+    const nachname = (r[ci]||'').trim();
+    const vorname  = cv>=0 ? (r[cv]||'').trim() : '';
+    const name = vorname && nachname ? vorname+' '+nachname : (vorname||nachname);
     if(!name) return;
     const cat = cc>=0 ? normCat(r[cc]) : "Familie & Freunde";
     state.players.push({id:nid(), name, cat});
