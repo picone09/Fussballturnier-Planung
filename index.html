@@ -493,6 +493,9 @@ function fixState(s) {
 function syncToFirebase(delay) {
   if (!dbRef) return;
   clearTimeout(syncTimer);
+  // Sofort den lokalen Stand als "ours" markieren, damit kein Firebase-Event
+  // mit alten Daten dazwischenkommt, bevor der Write abgeschlossen ist.
+  lastSyncedJSON = JSON.stringify({ v: 1, extraCats, state });
   syncTimer = setTimeout(() => {
     const data = { v: 1, extraCats, state };
     lastSyncedJSON = JSON.stringify(data);
