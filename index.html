@@ -455,21 +455,31 @@ let pendingImport = null; // {headers, rows}
 let uid = 1; const nid = ()=> 'x'+(uid++)+Date.now().toString(36).slice(-3);
 
 /* ===================== FIREBASE SYNC ===================== */
-firebase.initializeApp({
-  apiKey: "AIzaSyDWxprh5LSAdlLBisJrlFZbStYM70qCR6E",
-  authDomain: "rebstein-turnier.firebaseapp.com",
-  databaseURL: "https://rebstein-turnier-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "rebstein-turnier",
-  storageBucket: "rebstein-turnier.firebasestorage.app",
-  messagingSenderId: "587163325272",
-  appId: "1:587163325272:web:557d44ccf81c842bfd8b2d"
-});
-const dbRef = firebase.database().ref('tournament');
+let dbRef = null;
 let lastSyncedJSON = null;
 let syncTimer = null;
 let fbReady = false;
 
+try {
+  firebase.initializeApp({
+    apiKey: "AIzaSyDWxprh5LSAdlLBisJrlFZbStYM70qCR6E",
+    authDomain: "rebstein-turnier.firebaseapp.com",
+    databaseURL: "https://rebstein-turnier-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "rebstein-turnier",
+    storageBucket: "rebstein-turnier.firebasestorage.app",
+    messagingSenderId: "587163325272",
+    appId: "1:587163325272:web:557d44ccf81c842bfd8b2d"
+  });
+  dbRef = firebase.database().ref('tournament');
+} catch(e) {
+  console.warn('Firebase nicht verfügbar:', e);
+  // Ohne Firebase: App lokal nutzen, kein Sync
+  fbReady = true;
+  setTimeout(renderAll, 0);
+}
+
 function syncToFirebase(delay) {
+  if (!dbRef) return;
   clearTimeout(syncTimer);
   syncTimer = setTimeout(() => {
     const data = { v: 1, extraCats, state };
@@ -478,7 +488,7 @@ function syncToFirebase(delay) {
   }, delay || 0);
 }
 
-dbRef.on('value', snap => {
+if (dbRef) dbRef.on('value', snap => {
   const incoming = snap.val();
 
   if (!fbReady) {
@@ -626,11 +636,13 @@ function handleFile(file){
     const r=new FileReader();
     r.onload=e=>{
       try{
-        const wb = XLSX.read(new Uint8Array(e.target.result), {type:'array'});
+        const data = new Uint8Array(e.target.result);
+        const wb = XLSX.read(data, {type:'array', cellDates:false, raw:false});
         const ws = wb.Sheets[wb.SheetNames[0]];
-        const rows = XLSX.utils.sheet_to_json(ws,{header:1,blankrows:false,defval:''});
-        ingestRows(rows.map(r=>r.map(c=>String(c))));
-      }catch(err){ toast('Excel konnte nicht gelesen werden'); }
+        const rows = XLSX.utils.sheet_to_json(ws,{header:1,blankrows:false,defval:'',raw:false});
+        if(!rows.length){ toast('Excel ist leer'); return; }
+        ingestRows(rows.map(r=>r.map(c=>String(c==null?'':c).trim())));
+      }catch(err){ console.error('XLSX Fehler:', err); toast('Excel-Fehler: '+err.message); }
     };
     r.readAsArrayBuffer(file);
   } else {
