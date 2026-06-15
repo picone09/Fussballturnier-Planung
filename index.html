@@ -496,7 +496,10 @@ if (dbRef) dbRef.on('value', snap => {
     if (incoming && incoming.state) {
       state = incoming.state;
       extraCats = incoming.extraCats || [];
-      if (!state.twShots) state.twShots = {};
+      if (!state.players)  state.players  = [];
+      if (!state.teams)    state.teams    = [];
+      if (!state.schedule) state.schedule = [];
+      if (!state.twShots)  state.twShots  = {};
       if (!state.meta.rounds) state.meta.rounds = 1;
       lastSyncedJSON = JSON.stringify(incoming);
     }
@@ -511,7 +514,10 @@ if (dbRef) dbRef.on('value', snap => {
   function applyRemote() {
     state = incoming.state;
     extraCats = incoming.extraCats || [];
-    if (!state.twShots) state.twShots = {};
+    if (!state.players)  state.players  = [];
+    if (!state.teams)    state.teams    = [];
+    if (!state.schedule) state.schedule = [];
+    if (!state.twShots)  state.twShots  = {};
     if (!state.meta.rounds) state.meta.rounds = 1;
     lastSyncedJSON = incomingJSON;
     renderAll();
