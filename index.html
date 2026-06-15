@@ -739,25 +739,31 @@ function renderMapping(){
 }
 function cancelImport(){ pendingImport=null; $('#map-area').innerHTML=''; }
 function confirmImport(){
-  const rows = pendingImport.rows;
-  const hasHeader = $('#map-header').checked;
-  const cv = +$('#map-vorname').value;
-  const ci = +$('#map-name').value;
-  const cc = +$('#map-cat').value;
-  const body = hasHeader ? rows.slice(1) : rows;
-  let added=0;
-  body.forEach(r=>{
-    const nachname = (r[ci]||'').trim();
-    const vorname  = cv>=0 ? (r[cv]||'').trim() : '';
-    const name = vorname && nachname ? vorname+' '+nachname : (vorname||nachname);
-    if(!name) return;
-    const cat = cc>=0 ? normCat(r[cc]) : "Familie & Freunde";
-    state.players.push({id:nid(), name, cat});
-    added++;
-  });
-  pendingImport=null; $('#map-area').innerHTML='';
-  renderPlayers();
-  toast(added+' Spieler importiert'); syncToFirebase();
+  try {
+    const rows = pendingImport.rows;
+    const hasHeader = $('#map-header').checked;
+    const cvEl = $('#map-vorname');
+    const cv = cvEl ? +cvEl.value : -1;
+    const ci = +$('#map-name').value;
+    const cc = +$('#map-cat').value;
+    const body = hasHeader ? rows.slice(1) : rows;
+    let added=0;
+    body.forEach(r=>{
+      const nachname = (r[ci]||'').trim();
+      const vorname  = cv>=0 ? (r[cv]||'').trim() : '';
+      const name = vorname && nachname ? vorname+' '+nachname : (vorname||nachname);
+      if(!name) return;
+      const cat = cc>=0 ? normCat(r[cc]) : "Familie & Freunde";
+      state.players.push({id:nid(), name, cat});
+      added++;
+    });
+    pendingImport=null; $('#map-area').innerHTML='';
+    renderPlayers();
+    toast(added+' Spieler importiert'); syncToFirebase();
+  } catch(e) {
+    console.error('Import-Fehler:', e);
+    toast('Import-Fehler: '+e.message);
+  }
 }
 function exportPlayersCsv(){
   if(!state.players.length){ toast('Keine Spieler'); return; }
