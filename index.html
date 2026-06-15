@@ -821,7 +821,7 @@ function buildTeams(reshuffle){
   // Teams anlegen
   const teams = captains.map((cap,i)=>({
     id:nid(),
-    name:'Team '+(i+1),
+    name: cap.name.trim().split(/\s+/).pop(),
     captainId:cap.id,
     playerIds:[cap.id]
   }));
