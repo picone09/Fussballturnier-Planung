@@ -334,7 +334,6 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
         <span class="tag grey" id="pl-count">0 total</span>
         <div style="margin-left:auto; display:flex; gap:8px">
           <button class="ghost" onclick="exportPlayersCsv()">Als CSV</button>
-          <button class="danger delete-only" onclick="clearPlayers()">Alle löschen</button>
         </div>
       </div>
       <div class="pill-stats" id="cat-stats"></div>
@@ -441,9 +440,12 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
         <div><label class="fld">Pause (Min)</label><input type="number" id="s-break" value="3" min="0"></div>
       </div>
     </div>
-    <div class="modal-foot">
-      <button class="ghost" onclick="closeSettings()">Abbrechen</button>
-      <button class="primary" onclick="saveSettings()">Übernehmen</button>
+    <div class="modal-foot" style="justify-content:space-between">
+      <button class="danger delete-only" onclick="closeSettings();clearPlayers()">Alle Spieler löschen</button>
+      <div style="display:flex;gap:10px">
+        <button class="ghost" onclick="closeSettings()">Abbrechen</button>
+        <button class="primary" onclick="saveSettings()">Übernehmen</button>
+      </div>
     </div>
   </div>
 </div>
