@@ -234,9 +234,44 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
   .dot{width:34px; height:34px; border-radius:50%; border:2px solid var(--line); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px; color:var(--ink-soft); background:#faf8f1}
   .dot.hit{background:var(--green); border-color:var(--pitch); color:#fff}
   .dot.miss{background:#f0eee2; border-color:#d8d3c2; color:#b3ad9a}
+
+  /* ---- LOGIN ---- */
+  #login-overlay{position:fixed;inset:0;background:#1e1e1e;display:flex;align-items:center;justify-content:center;z-index:9999}
+  #login-box{background:#fff;border-radius:18px;padding:40px 36px;width:320px;text-align:center;box-shadow:0 8px 40px rgba(0,0,0,.4)}
+  #login-box img{width:64px;margin-bottom:14px}
+  #login-box h2{margin:0 0 4px;font-size:20px}
+  #login-box p.sub{color:var(--ink-soft);font-size:13px;margin:0 0 22px}
+  #login-box input{display:block;width:100%;box-sizing:border-box;margin-bottom:12px;padding:11px 14px;border:1px solid #ddd;border-radius:9px;font-size:15px}
+  #login-box button{width:100%;padding:12px;font-size:15px;font-weight:700;border-radius:9px;background:var(--pitch);color:#fff;border:0;cursor:pointer;margin-top:4px}
+  #login-box button:hover{background:var(--pitch-2)}
+  #login-error{color:var(--red);font-size:13px;margin-top:10px;display:none}
+
+  /* ---- ROLLEN ---- */
+  .edit-only{display:none}
+  .delete-only{display:none}
+  body.role-admin    .edit-only,
+  body.role-bearbeiter .edit-only  { display:revert }
+  body.role-admin    .delete-only  { display:revert }
+
+  /* User-Info im Header */
+  .user-info{display:flex;align-items:center;gap:10px;margin-left:auto}
+  .user-badge{font-size:12px;color:var(--chalk-dim);white-space:nowrap}
 </style>
 </head>
 <body>
+
+<div id="login-overlay">
+  <div id="login-box">
+    <img src="logo.png" alt="FC Rebstein">
+    <h2>FC Rebstein</h2>
+    <p class="sub">Turnier-Tool · Bitte anmelden</p>
+    <input type="text" id="login-user" placeholder="Benutzername" autocomplete="username">
+    <input type="password" id="login-pass" placeholder="Passwort" autocomplete="current-password"
+           onkeydown="if(event.key==='Enter') doLogin()">
+    <button onclick="doLogin()">Anmelden</button>
+    <p id="login-error">Falscher Benutzername oder Passwort</p>
+  </div>
+</div>
 <header class="app">
   <div class="head-inner">
     <img class="crest" src="logo.png" alt="FC Rebstein">
@@ -245,10 +280,14 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
       <div class="sub">Internes Plauschturnier</div>
     </div>
     <div class="head-actions">
-      <button class="ghost light" onclick="loadDemo()">Beispiel</button>
-      <button class="ghost light" onclick="openSettings()">Einstellungen</button>
-      <button class="ghost light" onclick="importJSON()">Laden</button>
-      <button class="primary" onclick="exportJSON()">Speichern</button>
+      <button class="ghost light edit-only" onclick="loadDemo()">Beispiel</button>
+      <button class="ghost light edit-only" onclick="openSettings()">Einstellungen</button>
+      <button class="ghost light edit-only" onclick="importJSON()">Laden</button>
+      <button class="primary edit-only" onclick="exportJSON()">Speichern</button>
+    </div>
+    <div class="user-info">
+      <span class="user-badge" id="current-user"></span>
+      <button class="ghost light" onclick="doLogout()" style="font-size:12px;padding:6px 10px">Abmelden</button>
     </div>
   </div>
 </header>
@@ -283,7 +322,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
         <div class="row">
           <div style="flex:2"><label class="fld">Name</label><input type="text" id="m-name" placeholder="Vorname Name"></div>
           <div style="flex:2"><label class="fld">Mannschaft</label><select id="m-cat"></select></div>
-          <div style="flex:0"><button class="dark" onclick="addManual()">+ Hinzufügen</button></div>
+          <div style="flex:0"><button class="dark edit-only" onclick="addManual()">+ Hinzufügen</button></div>
         </div>
         <div class="leg" style="margin-top:14px">Reihenfolge der Kapitäns-Priorität: 1. Mannschaft → 2. → 3. → +30 → +40 → Frauen → B → C-Promo → C → D → E → F → Familie&nbsp;&&nbsp;Freunde.</div>
       </div>
@@ -295,7 +334,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
         <span class="tag grey" id="pl-count">0 total</span>
         <div style="margin-left:auto; display:flex; gap:8px">
           <button class="ghost" onclick="exportPlayersCsv()">Als CSV</button>
-          <button class="danger" onclick="clearPlayers()">Alle löschen</button>
+          <button class="danger delete-only" onclick="clearPlayers()">Alle löschen</button>
         </div>
       </div>
       <div class="pill-stats" id="cat-stats"></div>
@@ -313,8 +352,8 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
           <label class="fld">Anzahl Teams</label>
           <input type="number" id="numTeams" min="2" max="20" value="8">
         </div>
-        <div style="flex:0"><button class="primary" onclick="buildTeams()">Teams generieren</button></div>
-        <div style="flex:0"><button class="ghost" onclick="buildTeams(true)">Neu mischen</button></div>
+        <div style="flex:0"><button class="primary edit-only" onclick="buildTeams()">Teams generieren</button></div>
+        <div style="flex:0"><button class="ghost edit-only" onclick="buildTeams(true)">Neu mischen</button></div>
         <div style="flex:1"></div>
         <div style="flex:0"><span class="mut" id="team-advice"></span></div>
       </div>
@@ -328,7 +367,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
       <h2>Spielplan</h2>
       <p class="hint">Jeder gegen jeden auf 3 Plätzen. Die App verteilt die Spiele so, dass kein Team zweimal gleichzeitig spielt und die Pausen fair sind.</p>
       <div class="row">
-        <div style="flex:0"><button class="primary" onclick="genSchedule()">Spielplan erstellen</button></div>
+        <div style="flex:0"><button class="primary edit-only" onclick="genSchedule()">Spielplan erstellen</button></div>
         <div style="flex:0"><button class="ghost" onclick="openSettings()">Zeiten & Plätze</button></div>
         <div style="flex:1"></div>
         <div style="flex:0"><button class="ghost" onclick="printSchedule()">Drucken / PDF</button></div>
@@ -356,7 +395,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
       <div class="tw-head">
         <h2 style="margin:0">Torwandschiessen</h2>
         <span class="tag grey">3 Schüsse · Felder 1–6</span>
-        <div style="margin-left:auto"><button class="danger" onclick="twResetAll()">Alle zurücksetzen</button></div>
+        <div style="margin-left:auto"><button class="danger delete-only" onclick="twResetAll()">Alle zurücksetzen</button></div>
       </div>
       <p class="hint">Jeder Spieler hat 3 Schüsse. Feld 1 = 1 Punkt … Feld 6 = 6 Punkte, daneben = 0. Punkte zählen pro Spieler und werden je Team summiert.</p>
       <div class="tw-stats">
@@ -453,6 +492,42 @@ let state = {
 };
 let pendingImport = null; // {headers, rows}
 let uid = 1; const nid = ()=> 'x'+(uid++)+Date.now().toString(36).slice(-3);
+
+/* ===================== AUTH ===================== */
+const USERS = [
+  { username: 'admin',      password: 'admin123',      role: 'admin' },
+  { username: 'bearbeiter', password: 'bearbeiter123', role: 'bearbeiter' },
+  { username: 'viewer',     password: 'viewer123',     role: 'viewer' },
+];
+let currentUser = null;
+
+function doLogin(){
+  const user = $('#login-user').value.trim();
+  const pass = $('#login-pass').value;
+  const found = USERS.find(u => u.username === user && u.password === pass);
+  if(!found){ $('#login-error').style.display='block'; return; }
+  currentUser = found;
+  sessionStorage.setItem('turnier-user', found.username);
+  applyRole();
+  $('#login-overlay').style.display = 'none';
+}
+function doLogout(){
+  sessionStorage.removeItem('turnier-user');
+  location.reload();
+}
+function applyRole(){
+  const role = currentUser ? currentUser.role : 'viewer';
+  document.body.className = document.body.className.replace(/role-\w+/g,'').trim() + ' role-' + role;
+  const labels = {admin:'Admin', bearbeiter:'Bearbeiter', viewer:'Viewer'};
+  $('#current-user').textContent = currentUser.username + ' · ' + labels[role];
+}
+function canEdit()   { return currentUser && currentUser.role !== 'viewer'; }
+function canDelete() { return currentUser && currentUser.role === 'admin'; }
+// Session wiederherstellen
+(function(){
+  const saved = sessionStorage.getItem('turnier-user');
+  if(saved){ const u = USERS.find(u=>u.username===saved); if(u){ currentUser=u; applyRole(); $('#login-overlay').style.display='none'; } }
+})();
 
 /* ===================== FIREBASE SYNC ===================== */
 let dbRef = null;
@@ -597,6 +672,7 @@ function fillCatSelect(sel, value){
   sel.innerHTML = allCats().map(c=>`<option ${c===value?'selected':''}>${esc(c)}</option>`).join('');
 }
 function addManual(){
+  if(!canEdit()){ toast('Keine Berechtigung'); return; }
   const name = $('#m-name').value.trim();
   if(!name){ toast('Bitte einen Namen eingeben'); return; }
   const cat = $('#m-cat').value;
@@ -605,10 +681,11 @@ function addManual(){
   renderPlayers(); toast('Spieler hinzugefügt'); syncToFirebase();
 }
 function clearPlayers(){
+  if(!canDelete()){ toast('Keine Berechtigung'); return; }
   if(!state.players.length) return;
   if(confirm('Wirklich alle '+state.players.length+' Spieler löschen?')){ state.players=[]; state.teams=[]; state.schedule=[]; state.twShots={}; renderPlayers(); renderTeams(); renderSchedule(); syncToFirebase(); }
 }
-function delPlayer(id){ state.players=state.players.filter(p=>p.id!==id); delete state.twShots[id]; renderPlayers(); syncToFirebase(); }
+function delPlayer(id){ if(!canDelete()){ toast('Keine Berechtigung'); return; } state.players=state.players.filter(p=>p.id!==id); delete state.twShots[id]; renderPlayers(); syncToFirebase(); }
 function changePlayerCat(id,val){ const p=playerById(id); if(p) p.cat=val; renderPlayers(); syncToFirebase(); }
 
 /* ===================== SPIELER: RENDER ===================== */
@@ -626,8 +703,8 @@ function renderPlayers(){
   let h='<table><thead><tr><th style="width:36px">#</th><th>Name</th><th>Mannschaft</th><th style="width:60px"></th></tr></thead><tbody>';
   sorted.forEach((p,i)=>{
     h+=`<tr><td class="num mut">${i+1}</td><td>${esc(p.name)}</td>
-        <td><select onchange="changePlayerCat('${p.id}',this.value)">${allCats().map(c=>`<option ${c===p.cat?'selected':''}>${esc(c)}</option>`).join('')}</select></td>
-        <td><button class="danger" onclick="delPlayer('${p.id}')">Entf.</button></td></tr>`;
+        <td>${canEdit()?`<select onchange="changePlayerCat('${p.id}',this.value)">${allCats().map(c=>`<option ${c===p.cat?'selected':''}>${esc(c)}</option>`).join('')}</select>`:`<span class="tag grey">${esc(p.cat)}</span>`}</td>
+        <td>${canDelete()?`<button class="danger" onclick="delPlayer('${p.id}')">Entf.</button>`:''}</td></tr>`;
   });
   h+='</tbody></table>';
   tbl.innerHTML=h;
@@ -797,6 +874,7 @@ function updateAdvice(){
 document.addEventListener('input', e=>{ if(e.target&&e.target.id==='numTeams') updateAdvice(); if(e.target&&e.target.id==='s-rounds') updateRoundsHint(); });
 
 function buildTeams(reshuffle){
+  if(!canEdit()){ toast('Keine Berechtigung'); return; }
   const n = state.players.length;
   const T = Math.max(2, Math.min(20, +$('#numTeams').value||8));
   if(n < T){ toast('Zu wenige Spieler für '+T+' Teams'); return; }
@@ -855,7 +933,7 @@ function renderTeams(){
     h+=`<div class="team">
       <div class="team-head">
         <span class="tnum">#${i+1}</span>
-        <input class="tname" value="${esc(t.name)}" onchange="renameTeam('${t.id}',this.value)">
+        <input class="tname" value="${esc(t.name)}" ${canEdit()?`onchange="renameTeam('${t.id}',this.value)"`:'disabled'}>
       </div>
       <div class="team-body">`;
     members.forEach(p=>{
@@ -865,8 +943,8 @@ function renderTeams(){
         <span>${esc(p.name)}</span>
         <span class="meta">
           <span class="cat">${esc(p.cat)}</span>
-          ${isCap?'':`<button class="tiny ghost" title="Zum Kapitän machen" onclick="setCaptain('${t.id}','${p.id}')">©️</button>`}
-          <select title="In anderes Team verschieben" onchange="movePlayer('${p.id}','${t.id}',this.value)">
+          ${isCap?'':canEdit()?`<button class="tiny ghost" title="Zum Kapitän machen" onclick="setCaptain('${t.id}','${p.id}')">©️</button>`:''}
+          <select title="In anderes Team verschieben" ${canEdit()?`onchange="movePlayer('${p.id}','${t.id}',this.value)"`:'disabled'}>
             <option value="">↪</option>${state.teams.filter(x=>x.id!==t.id).map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join('')}
           </select>
         </span>
@@ -895,6 +973,7 @@ function movePlayer(playerId, fromId, toId){
 
 /* ===================== SPIELPLAN ===================== */
 function genSchedule(){
+  if(!canEdit()){ toast('Keine Berechtigung'); return; }
   const T = state.teams.length;
   if(T<2){ toast('Zuerst Teams bilden'); return; }
   const F = Math.max(1, state.meta.fields||3);
@@ -935,6 +1014,7 @@ function slotTime(si){
   return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0');
 }
 function setScore(idx,which,val){
+  if(!canEdit()) return;
   const g=state.schedule[idx]; if(!g) return;
   g[which]= val===''?'':Math.max(0,parseInt(val)||0);
   g.played = (g.hg!=='' && g.ag!=='');
@@ -967,9 +1047,9 @@ function renderSchedule(){
           <div class="fld-n">${g.field}</div>
           <div class="t-h ${hw?'winner':''}">${esc(teamNameById(g.homeId))}${hw?'<span class="win-dot"></span>':''}</div>
           <div class="sc">
-            <input class="num" type="number" min="0" value="${g.hg}" onchange="setScore(${idx},'hg',this.value)">
+            <input class="num" type="number" min="0" value="${g.hg}" ${canEdit()?`onchange="setScore(${idx},'hg',this.value)"`:'disabled'}>
             <span>:</span>
-            <input class="num" type="number" min="0" value="${g.ag}" onchange="setScore(${idx},'ag',this.value)">
+            <input class="num" type="number" min="0" value="${g.ag}" ${canEdit()?`onchange="setScore(${idx},'ag',this.value)"`:'disabled'}>
           </div>
           <div class="t-a ${aw?'winner':''}">${aw?'<span class="win-dot"></span>':''}${esc(teamNameById(g.awayId))}</div>
         </div>`;
@@ -1169,7 +1249,7 @@ function twRenderPlayers(){
   members.forEach(p=>{
     const done=twPlayerDone(p.id), pts=twPlayerPts(p.id), shots=state.twShots[p.id]||[];
     const mini = done ? shots.map(f=> f>0 ? f+'P' : '✕').join(' · ') : 'noch offen';
-    h+=`<div class="tw-prow" onclick="twOpen('${p.id}')">
+    h+=`<div class="tw-prow" ${canEdit()?`onclick="twOpen('${p.id}')"`:'style="cursor:default"'}>
       <span style="font-size:17px">${done?'✓':'○'}</span>
       <span class="nm">${esc(p.name)}</span>
       <span class="mini">${mini}</span>
@@ -1225,8 +1305,8 @@ function twRenderModal(){
 function twShoot(n){ if(twModalShots.length>=TW_SHOTS) return; twModalShots.push(n); twRenderModal(); }
 function twMiss(){ if(twModalShots.length>=TW_SHOTS) return; twModalShots.push(0); twRenderModal(); }
 function twUndo(){ if(!twModalShots.length) return; twModalShots.pop(); twRenderModal(); }
-function twSave(){ if(!twModalPid||twModalShots.length<TW_SHOTS) return; state.twShots[twModalPid]=twModalShots.slice(); twClose(); twRender(); toast('Gespeichert'); syncToFirebase(); }
-function twResetAll(){ if(!Object.keys(state.twShots).length) return; if(confirm('Alle Torwand-Ergebnisse löschen?')){ state.twShots={}; twRender(); syncToFirebase(); } }
+function twSave(){ if(!canEdit()) return; if(!twModalPid||twModalShots.length<TW_SHOTS) return; state.twShots[twModalPid]=twModalShots.slice(); twClose(); twRender(); toast('Gespeichert'); syncToFirebase(); }
+function twResetAll(){ if(!canDelete()){ toast('Keine Berechtigung'); return; } if(!Object.keys(state.twShots).length) return; if(confirm('Alle Torwand-Ergebnisse löschen?')){ state.twShots={}; twRender(); syncToFirebase(); } }
 $('#tw-modal').addEventListener('click', e=>{ if(e.target===$('#tw-modal')) twClose(); });
 
 /* ===================== INIT ===================== */
